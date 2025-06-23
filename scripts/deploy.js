@@ -1,24 +1,24 @@
 const hre = require("hardhat");
 
 async function main() {
+  // Pega as 3 contas que vou usar: professor e 2 alunos
   const [admin, aluno1, aluno2] = await hre.ethers.getSigners();
 
+  // Deploy do token CTK primeiro
   const CertiToken = await hre.ethers.getContractFactory("CertiToken");
   const certiToken = await CertiToken.deploy();
   await certiToken.waitForDeployment();
 
+  // Deploy do sistema de certificados - precisa do endereço do token
   const Certificados = await hre.ethers.getContractFactory("Certificados");
   const certificados = await Certificados.deploy(await certiToken.getAddress());
   await certificados.waitForDeployment();
 
-  const certiTokenAddress = await certiToken.getAddress();
-  const certificadosAddress = await certificados.getAddress();
+  // IMPORTANTE: transfere a propriedade do token para o contrato de certificados
+  // Assim quando emite certificado, automaticamente dá tokens
+  await certiToken.transferOwnership(await certificados.getAddress());
 
-  await certiToken.transferOwnership(certificadosAddress);
-
-  const adminBalance = await certiToken.balanceOf(admin.address);
-  const aluno1Balance = await certiToken.balanceOf(aluno1.address);
-
+  // Cria alguns certificados de exemplo para testar
   await certificados.emitir(
     aluno1.address,
     "João Silva",
@@ -35,37 +35,12 @@ async function main() {
     "CERT002"
   );
 
-  const finalAdminBalance = await certiToken.balanceOf(admin.address);
-  const finalAluno1Balance = await certiToken.balanceOf(aluno1.address);
-  const finalAluno2Balance = await certiToken.balanceOf(aluno2.address);
+  // Mostra os endereços - preciso deles no frontend
+  console.log("\nENDEREÇOS DOS CONTRATOS:");
+  console.log(`CertiToken: ${await certiToken.getAddress()}`);
+  console.log(`Certificados: ${await certificados.getAddress()}`);
 
-  const totalSupply = await certiToken.totalSupply();
-  const totalCerts = await certificados.totalCertificados(aluno1.address);
-
-  console.log("\n🎯 DEPLOY COMPLETO - SISTEMA DE CERTIFICADOS CTK");
-  console.log("=".repeat(60));
-
-  console.log("\n📄 ENDEREÇOS DOS CONTRATOS:");
-  console.log(`CertiToken: ${certiTokenAddress}`);
-  console.log(`Certificados: ${certificadosAddress}`);
-
-  console.log("\n👥 CONTAS DE TESTE:");
-  console.log(`Admin/Professor: ${admin.address}`);
-  console.log(`Aluno 1: ${aluno1.address}`);
-  console.log(`Aluno 2: ${aluno2.address}`);
-
-  console.log("\n💰 SALDOS CTK:");
-  console.log(`Admin: ${hre.ethers.formatEther(finalAdminBalance)} CTK`);
-  console.log(`Aluno 1: ${hre.ethers.formatEther(finalAluno1Balance)} CTK`);
-  console.log(`Aluno 2: ${hre.ethers.formatEther(finalAluno2Balance)} CTK`);
-
-  try {
-    await certificados.revogarCertificado("CERT001");
-  } catch (error) {
-    // Certificado pode já estar revogado
-  }
-
-  console.log("\n🚀 SISTEMA PRONTO PARA USO!");
+  console.log("\nSISTEMA PRONTO!");
 }
 
 main().catch((error) => {
