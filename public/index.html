@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>CertificaDApp Local</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  </head>
+  <body>
+    <h1>🎓 Certificados Digitais - Ambiente Local (Hardhat)</h1>
+
+    <div>
+      <label>Selecionar papel:</label>
+      <button onclick="setUser('admin')">👨‍🏫 Admin</button>
+      <button onclick="setUser('aluno1')">👨‍🎓 Aluno 1</button>
+    </div>
+
+    <div id="user-info"></div>
+
+    <hr />
+
+    <div id="admin-panel" style="display: none">
+      <h2>Emitir Certificado</h2>
+      <input id="aluno" placeholder="Endereço do aluno" /><br />
+      <input id="nome" placeholder="Nome do aluno" /><br />
+      <input id="curso" placeholder="Curso" /><br />
+      <input id="data" type="date" /><br />
+      <input id="certId" placeholder="ID do certificado" /><br />
+      <button onclick="emitir()">Emitir</button>
+    </div>
+
+    <div id="consulta-panel" style="display: none">
+      <h2>Consultar meus certificados</h2>
+      <button onclick="consultar()">Consultar</button>
+      <pre id="resultado-consulta"></pre>
+    </div>
+
+    <hr />
+
+    <h2>Verificar certificado</h2>
+    <input id="verificaId" placeholder="ID do certificado" />
+    <button onclick="verificar()">Verificar</button>
+    <pre id="resultado-verificacao"></pre>
+
+    <script>
+      const CERTIFICADOS_ADDRESS = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+      const TOKEN_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+
+      const CERTIFICADOS_ABI = [
+        "function emitir(address,string,string,string,string)",
+        "function consultar(address) view returns (tuple(string nome,string curso,string data,string id,bool ativo)[])",
+        "function verificar(string) view returns (bool)",
+        "function detalhes(string) view returns (string,string,string,address,bool)",
+      ];
+
+      const TOKEN_ABI = [
+        "function balanceOf(address) view returns (uint)",
+        "function recompensar(address,uint256)",
+        "function destruir(address,uint256)",
+      ];
+
+      const ACCOUNTS = {
+        admin: {
+          address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+          privateKey:
+            "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+        },
+        aluno1: {
+          address: "0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199",
+          privateKey:
+            "0xdf57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e",
+        },
+      };
+
+      let currentUser;
+      let provider;
+      let wallet;
+      let contrato;
+      let token;
+
+      async function setUser(tipo) {
+        provider = new ethers.providers.JsonRpcProvider(
+          "http://localhost:8545"
+        );
+        currentUser = ACCOUNTS[tipo];
+        wallet = new ethers.Wallet(currentUser.privateKey, provider);
+        contrato = new ethers.Contract(
+          CERTIFICADOS_ADDRESS,
+          CERTIFICADOS_ABI,
+          wallet
+        );
+
+        console.log("🔐 Wallet conectada: ", wallet.address);
+
+        token = new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, wallet);
+
+        document.getElementById("user-info").innerText =
+          "Conectado como: " + tipo + " (" + currentUser.address + ")";
+        document.getElementById("admin-panel").style.display =
+          tipo === "admin" ? "block" : "none";
+        document.getElementById("consulta-panel").style.display =
+          tipo !== "admin" ? "block" : "none";
+      }
+
+      async function emitir() {
+        const aluno = document.getElementById("aluno").value;
+        const nome = document.getElementById("nome").value;
+        const curso = document.getElementById("curso").value;
+        const data = document.getElementById("data").value;
+        const id = document.getElementById("certId").value;
+
+        try {
+          const tx = await contrato.emitir(aluno, nome, curso, data, id);
+          await tx.wait();
+          alert("✅ Certificado emitido com sucesso!");
+        } catch (e) {
+          alert("❌ Erro ao emitir: " + e.message);
+        }
+      }
+
+      async function consultar() {
+        console.log("Contrato:", contrato);
+        console.log("Funções disponíveis:", Object.keys(contrato.functions));
+
+        try {
+          console.log("Consultando endereço:", currentUser.address); // 👈 loga o endereço
+          const dados = await contrato.consultar(currentUser.address);
+          console.log("Dados recebidos:", dados); // 👈 loga o retorno
+          document.getElementById("resultado-consulta").innerText =
+            JSON.stringify(dados, null, 2);
+        } catch (e) {
+          console.error("Erro no consultar:", e); // 👈 loga o erro completo
+          document.getElementById("resultado-consulta").innerText =
+            "Erro: " + e.message;
+        }
+      }
+
+      async function verificar() {
+        const id = document.getElementById("verificaId").value;
+        try {
+          const existe = await contrato.verificar(id);
+          if (!existe) {
+            document.getElementById("resultado-verificacao").innerText =
+              "❌ Certificado não encontrado";
+          } else {
+            const detalhes = await contrato.detalhes(id);
+            document.getElementById("resultado-verificacao").innerText =
+              "✅ Certificado válido\n" +
+              "Nome: " +
+              detalhes[0] +
+              "\n" +
+              "Curso: " +
+              detalhes[1] +
+              "\n" +
+              "Data: " +
+              detalhes[2] +
+              "\n" +
+              "Aluno: " +
+              detalhes[3] +
+              "\n" +
+              "Status: " +
+              (detalhes[4] ? "Ativo" : "Inativo");
+          }
+        } catch (e) {
+          document.getElementById("resultado-verificacao").innerText =
+            "Erro: " + e.message;
+        }
+      }
+    </script>
+  </body>
+</html>
