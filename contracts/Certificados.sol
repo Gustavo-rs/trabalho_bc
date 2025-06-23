@@ -5,7 +5,7 @@ import "./CertiToken.sol";
 
 contract Certificados {
     address public admin;
-    CertiToken public token;
+    CertiToken public certiToken;
 
     struct Certificado {
         string nome;
@@ -17,34 +17,44 @@ contract Certificados {
 
     mapping(address => Certificado[]) certificados;
     mapping(string => bool) emitido;
-    mapping(string => address) donoDoCertificado;
+    mapping(string => address) certificadoParaAluno;
 
-    constructor(address _token) {
+    event CertificadoEmitido(address indexed aluno, string nome, string curso, string id);
+    event TokenRecompensa(address indexed aluno, uint256 quantidade);
+    event CertificadoRevogado(string id, address aluno);
+
+    constructor(address _certiTokenAddress) {
         admin = msg.sender;
-        token = CertiToken(_token);
+        certiToken = CertiToken(_certiTokenAddress);
     }
 
-    modifier onlyAdmin() {
-        require(msg.sender == admin, "Somente admin");
+    modifier somenteAdmin() {
+        require(msg.sender == admin, "Apenas admin pode executar");
         _;
     }
 
-    function emitir(address aluno, string memory nome, string memory curso, string memory data, string memory id) public onlyAdmin {
-        require(!emitido[id], "ID ja usado");
-
-        // DEBUG
-        require(msg.sender == admin, "Voce nao e o admin");
-
+    function emitir(
+        address aluno, 
+        string memory nome, 
+        string memory curso, 
+        string memory data, 
+        string memory id
+    ) public somenteAdmin {
+        require(!emitido[id], "Certificado ja foi emitido");
+        require(aluno != address(0), "Endereco invalido");
+        
         certificados[aluno].push(Certificado(nome, curso, data, id, true));
         emitido[id] = true;
-        donoDoCertificado[id] = aluno;
-
-        token.recompensar(aluno, 10);
+        certificadoParaAluno[id] = aluno;
+        
+        certiToken.recompensar(aluno, 10);
+        
+        emit CertificadoEmitido(aluno, nome, curso, id);
+        emit TokenRecompensa(aluno, 10);
     }
 
     function consultar(address aluno) public view returns (Certificado[] memory) {
-        Certificado[] memory lista = certificados[aluno];
-        return lista;
+        return certificados[aluno];
     }
 
     function verificar(string memory id) public view returns (bool) {
@@ -53,27 +63,52 @@ contract Certificados {
 
     function detalhes(string memory id) public view returns (
         string memory nome,
-        string memory curso,
+        string memory curso, 
         string memory data,
         address aluno,
         bool ativo
     ) {
-        require(emitido[id], "Inexistente");
-
-        address a = donoDoCertificado[id];
-        Certificado[] memory lista = certificados[a];
-
-        for (uint i = 0; i < lista.length; i++) {
-            if (keccak256(bytes(lista[i].id)) == keccak256(bytes(id))) {
-                Certificado memory c = lista[i];
-                return (c.nome, c.curso, c.data, a, c.ativo);
+        require(emitido[id], "Certificado nao existe");
+        address alunoEnd = certificadoParaAluno[id];
+        
+        Certificado[] memory certs = certificados[alunoEnd];
+        for(uint i = 0; i < certs.length; i++) {
+            if(keccak256(bytes(certs[i].id)) == keccak256(bytes(id))) {
+                return (certs[i].nome, certs[i].curso, certs[i].data, alunoEnd, certs[i].ativo);
             }
         }
-
+        
         return ("", "", "", address(0), false);
+    }
+
+    function saldoTokens(address aluno) public view returns (uint256) {
+        return certiToken.balanceOf(aluno);
     }
 
     function totalCertificados(address aluno) public view returns (uint256) {
         return certificados[aluno].length;
+    }
+    
+    function revogarCertificado(string memory id) public somenteAdmin {
+        require(emitido[id], "Certificado nao existe");
+        address alunoEnd = certificadoParaAluno[id];
+        
+        Certificado[] storage certs = certificados[alunoEnd];
+        for(uint i = 0; i < certs.length; i++) {
+            if(keccak256(bytes(certs[i].id)) == keccak256(bytes(id))) {
+                certs[i].ativo = false;
+                emit CertificadoRevogado(id, alunoEnd);
+                break;
+            }
+        }
+    }
+    
+    function transferirAdmin(address novoAdmin) public somenteAdmin {
+        require(novoAdmin != address(0), "Endereco invalido");
+        admin = novoAdmin;
+    }
+    
+    function obterTodosTokensAluno(address aluno) public view returns (uint256) {
+        return certiToken.consultarSaldo(aluno);
     }
 }

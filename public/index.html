@@ -2,169 +2,187 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <title>CertificaDApp Local</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CertificaDApp - Simulação Local</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <h1>🎓 Certificados Digitais - Ambiente Local (Hardhat)</h1>
+    <div class="container">
+      <div class="header">
+        <h1>🎓 CertificaDApp - Simulação Local</h1>
+        <p>Sistema de Certificados Digitais com Tokens CTK (Sem MetaMask)</p>
+      </div>
 
-    <div>
-      <label>Selecionar papel:</label>
-      <button onclick="setUser('admin')">👨‍🏫 Admin</button>
-      <button onclick="setUser('aluno1')">👨‍🎓 Aluno 1</button>
+      <div class="user-selector">
+        <h2>👥 Selecione o Usuário</h2>
+        <button class="user-btn" onclick="selectUser('admin', this)">
+          👨‍🏫 Professor/Admin
+        </button>
+        <button class="user-btn" onclick="selectUser('aluno1', this)">
+          👨‍🎓 Aluno 1
+        </button>
+        <button class="user-btn" onclick="selectUser('aluno2', this)">
+          👩‍🎓 Aluno 2
+        </button>
+      </div>
+
+      <div id="userInfo" class="current-user hidden">
+        <h3 id="userName"></h3>
+        <div class="address" id="userAddress"></div>
+        <div class="balance-display">
+          <h3>💰 Saldo CTK</h3>
+          <div id="tokenBalance">0 CTK</div>
+        </div>
+      </div>
+
+      <div id="statusMessages"></div>
+
+      <div id="quickActions" class="card hidden">
+        <h2>⚡ Ações Rápidas</h2>
+        <button class="btn" onclick="updateBalance()">
+          🔄 Atualizar Saldo
+        </button>
+      </div>
+
+      <div id="appContent" class="hidden">
+        <div id="adminPanel" class="hidden">
+          <div class="grid">
+            <div class="card">
+              <h2>📜 Emitir Certificado</h2>
+              <div class="input-group">
+                <label for="selectAluno">Selecionar Aluno:</label>
+                <select id="selectAluno">
+                  <option value="">Escolha um aluno...</option>
+                  <option value="0x70997970C51812dc3A010C7d01b50e0d17dc79C8">
+                    👨‍🎓 Aluno 1
+                  </option>
+                  <option value="0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC">
+                    👩‍🎓 Aluno 2
+                  </option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label for="alunoNome">Nome do Aluno:</label>
+                <input
+                  type="text"
+                  id="alunoNome"
+                  placeholder="Ex: João Silva"
+                />
+              </div>
+              <div class="input-group">
+                <label for="cursoNome">Curso:</label>
+                <input
+                  type="text"
+                  id="cursoNome"
+                  placeholder="Ex: Blockchain Development"
+                />
+              </div>
+              <div class="input-group">
+                <label for="cursoData">Data de Conclusão:</label>
+                <input type="date" id="cursoData" />
+              </div>
+              <div class="input-group">
+                <label for="certificadoId">ID do Certificado:</label>
+                <input
+                  type="text"
+                  id="certificadoId"
+                  placeholder="Ex: CERT2025001"
+                />
+              </div>
+              <button class="btn" onclick="emitirCertificado()">
+                ✅ Emitir Certificado
+              </button>
+            </div>
+
+            <div class="card">
+              <h2>🔥 Gerenciar Tokens (Admin)</h2>
+              <button class="btn" onclick="consultarTotalTokens()">
+                📊 Total em Circulação
+              </button>
+            </div>
+
+            <div class="card">
+              <h2>❌ Revogar Certificado</h2>
+              <div class="input-group">
+                <label for="revogarId">ID do Certificado:</label>
+                <input
+                  type="text"
+                  id="revogarId"
+                  placeholder="Ex: CERT2025001"
+                />
+              </div>
+              <button class="btn danger" onclick="revogarCertificado()">
+                ❌ Revogar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="studentPanel" class="hidden">
+          <div class="grid">
+            <div class="card">
+              <h2>📜 Meus Certificados</h2>
+              <button class="btn" onclick="consultarCertificados()">
+                📋 Ver Certificados
+              </button>
+              <div id="certificadosResult"></div>
+            </div>
+
+            <div class="card">
+              <h2>💸 Transferir Tokens</h2>
+              <div class="input-group">
+                <label for="transferPara">Endereço de Destino:</label>
+                <select id="transferPara">
+                  <option value="">Escolha um destinatário...</option>
+                  <option value="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266">
+                    👨‍🏫 Professor/Admin
+                    (0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266)
+                  </option>
+                  <option value="0x70997970C51812dc3A010C7d01b50e0d17dc79C8">
+                    👨‍🎓 Aluno 1 (0x70997970C51812dc3A010C7d01b50e0d17dc79C8)
+                  </option>
+                  <option value="0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC">
+                    👩‍🎓 Aluno 2 (0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC)
+                  </option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label for="quantidadeTransfer">Quantidade:</label>
+                <input
+                  type="number"
+                  id="quantidadeTransfer"
+                  placeholder="Ex: 5"
+                  step="0.01"
+                />
+              </div>
+              <button class="btn" onclick="transferirTokens()">
+                💸 Transferir
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="card">
+            <h2>🔍 Verificar Certificado</h2>
+            <div class="input-group">
+              <label for="verificarId">ID do Certificado:</label>
+              <input
+                type="text"
+                id="verificarId"
+                placeholder="Ex: CERT2025001"
+              />
+            </div>
+            <button class="btn" onclick="verificarCertificado()">
+              🔍 Verificar
+            </button>
+            <div id="verificacaoResult"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div id="user-info"></div>
-
-    <hr />
-
-    <div id="admin-panel" style="display: none">
-      <h2>Emitir Certificado</h2>
-      <input id="aluno" placeholder="Endereço do aluno" /><br />
-      <input id="nome" placeholder="Nome do aluno" /><br />
-      <input id="curso" placeholder="Curso" /><br />
-      <input id="data" type="date" /><br />
-      <input id="certId" placeholder="ID do certificado" /><br />
-      <button onclick="emitir()">Emitir</button>
-    </div>
-
-    <div id="consulta-panel" style="display: none">
-      <h2>Consultar meus certificados</h2>
-      <button onclick="consultar()">Consultar</button>
-      <pre id="resultado-consulta"></pre>
-    </div>
-
-    <hr />
-
-    <h2>Verificar certificado</h2>
-    <input id="verificaId" placeholder="ID do certificado" />
-    <button onclick="verificar()">Verificar</button>
-    <pre id="resultado-verificacao"></pre>
-
-    <script>
-      const CERTIFICADOS_ADDRESS = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
-      const TOKEN_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
-
-      const CERTIFICADOS_ABI = [
-        "function emitir(address,string,string,string,string)",
-        "function consultar(address) view returns (tuple(string nome,string curso,string data,string id,bool ativo)[])",
-        "function verificar(string) view returns (bool)",
-        "function detalhes(string) view returns (string,string,string,address,bool)",
-      ];
-
-      const TOKEN_ABI = [
-        "function balanceOf(address) view returns (uint)",
-        "function recompensar(address,uint256)",
-        "function destruir(address,uint256)",
-      ];
-
-      const ACCOUNTS = {
-        admin: {
-          address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-          privateKey:
-            "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-        },
-        aluno1: {
-          address: "0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199",
-          privateKey:
-            "0xdf57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e",
-        },
-      };
-
-      let currentUser;
-      let provider;
-      let wallet;
-      let contrato;
-      let token;
-
-      async function setUser(tipo) {
-        provider = new ethers.providers.JsonRpcProvider(
-          "http://localhost:8545"
-        );
-        currentUser = ACCOUNTS[tipo];
-        wallet = new ethers.Wallet(currentUser.privateKey, provider);
-        contrato = new ethers.Contract(
-          CERTIFICADOS_ADDRESS,
-          CERTIFICADOS_ABI,
-          wallet
-        );
-
-        console.log("🔐 Wallet conectada: ", wallet.address);
-
-        token = new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, wallet);
-
-        document.getElementById("user-info").innerText =
-          "Conectado como: " + tipo + " (" + currentUser.address + ")";
-        document.getElementById("admin-panel").style.display =
-          tipo === "admin" ? "block" : "none";
-        document.getElementById("consulta-panel").style.display =
-          tipo !== "admin" ? "block" : "none";
-      }
-
-      async function emitir() {
-        const aluno = document.getElementById("aluno").value;
-        const nome = document.getElementById("nome").value;
-        const curso = document.getElementById("curso").value;
-        const data = document.getElementById("data").value;
-        const id = document.getElementById("certId").value;
-
-        try {
-          const tx = await contrato.emitir(aluno, nome, curso, data, id);
-          await tx.wait();
-          alert("✅ Certificado emitido com sucesso!");
-        } catch (e) {
-          alert("❌ Erro ao emitir: " + e.message);
-        }
-      }
-
-      async function consultar() {
-        console.log("Contrato:", contrato);
-        console.log("Funções disponíveis:", Object.keys(contrato.functions));
-
-        try {
-          console.log("Consultando endereço:", currentUser.address); // 👈 loga o endereço
-          const dados = await contrato.consultar(currentUser.address);
-          console.log("Dados recebidos:", dados); // 👈 loga o retorno
-          document.getElementById("resultado-consulta").innerText =
-            JSON.stringify(dados, null, 2);
-        } catch (e) {
-          console.error("Erro no consultar:", e); // 👈 loga o erro completo
-          document.getElementById("resultado-consulta").innerText =
-            "Erro: " + e.message;
-        }
-      }
-
-      async function verificar() {
-        const id = document.getElementById("verificaId").value;
-        try {
-          const existe = await contrato.verificar(id);
-          if (!existe) {
-            document.getElementById("resultado-verificacao").innerText =
-              "❌ Certificado não encontrado";
-          } else {
-            const detalhes = await contrato.detalhes(id);
-            document.getElementById("resultado-verificacao").innerText =
-              "✅ Certificado válido\n" +
-              "Nome: " +
-              detalhes[0] +
-              "\n" +
-              "Curso: " +
-              detalhes[1] +
-              "\n" +
-              "Data: " +
-              detalhes[2] +
-              "\n" +
-              "Aluno: " +
-              detalhes[3] +
-              "\n" +
-              "Status: " +
-              (detalhes[4] ? "Ativo" : "Inativo");
-          }
-        } catch (e) {
-          document.getElementById("resultado-verificacao").innerText =
-            "Erro: " + e.message;
-        }
-      }
-    </script>
+    <script src="app.js"></script>
   </body>
 </html>
